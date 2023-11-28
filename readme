@@ -1,0 +1,24 @@
+# Feature
+- Mengelola Buku
+  - Menambah Buku
+  - Mengubah Buku
+  - Menghapus Buku
+  - List Buku
+  - Mencari Buku
+- Mengelola Anggota
+  - Menambah Anggota
+  - Mengubah Anggota
+  - Menghapus Anggota
+  - List Anggota
+  - Mencari Anggota
+- Peminjaman Dan Pengembalian Buku
+  - Peminjaman Buku
+  - Pengembalian Buku
+  - List Peminjaman
+  - Mencari Peminjaman
+- user
+  - Login
+
+- Buku: ISBN, Judul, Pengarang, Penerbit, Tahun Terbit, Jumlah Buku, Kategori
+- Anggota: NIM, Nama, Jurusan, Jenis Kelamin, No Telepon, Alamat
+- Peminjaman: ISBN, NIM, Tanggal Pinjam, Tanggal Kembali, Status (Dipinjam, Dikembalikan), Denda
