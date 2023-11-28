@@ -19,6 +19,6 @@
 - user
   - Login
 
-- Buku: ISBN, Judul, Pengarang, Penerbit, Tahun Terbit, Jumlah Buku, Kategori
+- Buku: ISBN, Judul, Pengarang, Penerbit, Tahun Terbit, Jumlah Buku, Stok
 - Anggota: NIM, Nama, Jurusan, Jenis Kelamin, No Telepon, Alamat
-- Peminjaman: ISBN, NIM, Tanggal Pinjam, Tanggal Kembali, Status (Dipinjam, Dikembalikan), Denda
+- Peminjaman: ISBN, NIM, Tanggal Pinjam, Tanggal Kembali, Status (Dipinjam, Dikembalikan)
