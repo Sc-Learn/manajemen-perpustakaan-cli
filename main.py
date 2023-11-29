@@ -101,7 +101,7 @@ def login(max_login = 3):
     user_login = True
     
     print(f'\nLogin berhasil! Selamat datang {username}')
-    loading(0.1, "Menuju menu utama")
+    loading(1.5, "Menuju menu utama")
     clear(9 if max_login == MAX_LOGIN else 12)
     
     menu_utama()
@@ -319,7 +319,7 @@ def menu_tambah_buku(error = False):
       json.dump(list_buku, f)
       
     print("\nBuku berhasil disimpan!")
-    time.sleep(1)
+    time.sleep(2.5)
     
     clear(16 if error else 12)
     
@@ -372,21 +372,21 @@ def menu_lihat_buku(error = False, halaman = 1):
   pilihan = input("> Pilih menu (1-4): ")
   
   if pilihan == "1":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
 
     if halaman > 1:
       menu_lihat_buku(error=False, halaman=halaman-1)
     else:
       menu_lihat_buku(error=False, halaman=halaman)
   elif pilihan == "2":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
 
     if halaman < total_halaman:
       menu_lihat_buku(error=False, halaman=halaman+1)
     else:
       menu_lihat_buku(error=False, halaman=halaman)
   elif pilihan == "3":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
     menu_kelola_buku()
   elif pilihan == "4":
     keluar_aplikasi()
@@ -538,7 +538,7 @@ def menu_edit_buku(error = False, buku_terpilih = None):
             json.dump(list_buku, f)
             
           print("\nBuku berhasil diubah!")
-          time.sleep(1)
+          time.sleep(2.5)
           
           clear(17 if error else 13)
           
@@ -589,7 +589,7 @@ def menu_hapus_buku(error = False):
             json.dump(list_buku, f)
             
           print("\nBuku berhasil dihapus!")
-          time.sleep(1)
+          time.sleep(2.5)
           
           clear(11 if error else 7)
           
@@ -761,7 +761,7 @@ def menu_tambah_anggota(error = False):
       json.dump(list_anggota, f)
       
     print("\nAnggota berhasil disimpan!")
-    time.sleep(1)
+    time.sleep(2.5)
     
     clear(15 if error else 11)
     
@@ -814,21 +814,21 @@ def menu_lihat_anggota(error = False, halaman = 1):
   pilihan = input("> Pilih menu (1-4): ")
   
   if pilihan == "1":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
 
     if halaman > 1:
       menu_lihat_anggota(error=False, halaman=halaman-1)
     else:
       menu_lihat_anggota(error=False, halaman=halaman)
   elif pilihan == "2":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
     
     if halaman < total_halaman:
       menu_lihat_anggota(error=False, halaman=halaman+1)
     else:
       menu_lihat_anggota(error=False, halaman=halaman)
   elif pilihan == "3":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
     menu_kelola_anggota()
   elif pilihan == "4":
     keluar_aplikasi()
@@ -954,7 +954,7 @@ def menu_edit_anggota(error = False, anggota_terpilih = None):
             json.dump(list_anggota, f)
             
           print("\nAnggota berhasil diubah!")
-          time.sleep(1)
+          time.sleep(2.5)
           
           clear(16 if error else 12)
           
@@ -1005,7 +1005,7 @@ def menu_hapus_anggota(error = False):
             json.dump(list_anggota, f)
             
           print("\nAnggota berhasil dihapus!")
-          time.sleep(1)
+          time.sleep(2.5)
           
           clear(11 if error else 7)
           
@@ -1156,7 +1156,7 @@ def menu_pinjam(error = False):
           json.dump(list_buku, f)
       
     print("\nBuku berhasil dipinjam!")
-    time.sleep(1)
+    time.sleep(2.5)
     
     clear(11 if error else 7)
     
@@ -1291,7 +1291,7 @@ def menu_kembalikan_buku(error = False):
           json.dump(list_buku, f)
       
     print("\nBuku berhasil dikembalikan!")
-    time.sleep(1)
+    time.sleep(2.5)
     
     clear(11 if error else 7)
     
@@ -1349,26 +1349,26 @@ def menu_riwayat_peminjaman(error = False, halaman = 1):
   pilihan = input("> Pilih menu (1-4): ")
   
   if pilihan == "1":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
     
     if halaman > 1:
       menu_riwayat_peminjaman(error=False, halaman=halaman-1)
     else:
       menu_riwayat_peminjaman(error=False, halaman=halaman)
   elif pilihan == "2":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
     
     if halaman < total_halaman:
       menu_riwayat_peminjaman(error=False, halaman=halaman+1)
     else:
       menu_riwayat_peminjaman(error=False, halaman=halaman)
   elif pilihan == "3":
-    clear(26 if error else 22)
+    clear(27 if error else 23)
     menu_kelola_peminjaman_dan_pengembalian()
   elif pilihan == "4":
     keluar_aplikasi()
   else:
-    clear(25 if error else 21)
+    clear(26 if error else 22)
     print("!"*56)
     print(f'!! {"Pilihan tidak tersedia":^50} !!')
     print("!"*56)
