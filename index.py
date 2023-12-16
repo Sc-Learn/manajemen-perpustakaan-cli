@@ -1,10 +1,9 @@
 import json
 import os
-import sys
 import time
 import datetime
 import colorama 
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 import getpass
 import inquirer
 from prettytable import PrettyTable
@@ -17,7 +16,7 @@ MAX_LOGIN = 3
 
 # credetial admin
 admin = {
-  "username": "123",
+  "username": "admin",
   "password": "123"
 }
 
@@ -88,7 +87,8 @@ def keluar_aplikasi():
   print(f"{Fore.GREEN}Terima kasih telah menggunakan program ini{Style.RESET_ALL}")
   time.sleep(2)
   clear_screen(False)
-  sys.exit()
+  # exit program using library os
+  os._exit(0)
 
 # Fungsi validasi inputan tidak boleh kosong inquirer
 def validasi_inputan_tidak_kosong(_, x):
@@ -192,7 +192,7 @@ def validasi_buku_tersedia(_, x):
   # cari apakah ISBN sudah ada di list buku
   for buku in list_buku:
     if buku["ISBN"] == x:
-      if buku["stok"] > 0:
+      if int(buku["stok"]) > 0:
         return True
       else:
         raise inquirer.errors.ValidationError('', reason='Buku tidak tersedia')
@@ -230,7 +230,7 @@ def main():
       print(f'\n{Fore.RED}Terlalu banyak percobaan login{Style.RESET_ALL}')
       time.sleep(2)
       clear_screen(False)
-      sys.exit()
+      os._exit(0)
     else:
       print(f'\n{Fore.GREEN}Login berhasil! Selamat datang admin{Style.RESET_ALL}')
       time.sleep(2)
@@ -379,7 +379,9 @@ def menu_tambah_buku():
                 ),
     ])
     
+    
     if tambah_buku_lagi["tambah"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Buku tidak disimpan{Style.RESET_ALL}')
@@ -463,6 +465,7 @@ def menu_ubah_buku():
     ])
     
     if ubah_buku_lagi["ubah"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Buku tidak disimpan{Style.RESET_ALL}')
@@ -520,6 +523,7 @@ def menu_hapus_buku():
     ])
     
     if hapus_buku_lagi["hapus"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Buku tidak dihapus{Style.RESET_ALL}')
@@ -658,6 +662,7 @@ def menu_tambah_anggota():
     ])
     
     if tambah_anggota_lagi["tambah"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Anggota tidak disimpan{Style.RESET_ALL}')
@@ -736,6 +741,7 @@ def menu_ubah_anggota():
     ])
     
     if ubah_anggota_lagi["ubah"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Anggota tidak disimpan{Style.RESET_ALL}')
@@ -792,6 +798,7 @@ def menu_hapus_anggota():
     ])
     
     if hapus_anggota_lagi["hapus"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Anggota tidak dihapus{Style.RESET_ALL}')
@@ -899,6 +906,14 @@ def menu_tambah_peminjaman():
   ])
   
   if simpan_peminjaman["simpan"]:
+    # kurangi stok buku
+    for i, item in enumerate(list_buku):
+      if item["ISBN"] == data_peminjaman["ISBN"]:
+        list_buku[i]["stok"] = str(int(list_buku[i]["stok"]) - 1)
+        ubah_file_json(path_buku, list_buku)
+        break
+
+    data_peminjaman["tanggal_kembali"] = None
     list_peminjaman.insert(0, data_peminjaman)
     ubah_file_json(path_peminjaman, list_peminjaman)
     
@@ -912,6 +927,7 @@ def menu_tambah_peminjaman():
     ])
     
     if tambah_peminjaman_lagi["tambah"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Buku gagal dipinjam{Style.RESET_ALL}')
@@ -959,6 +975,13 @@ def menu_kembalikan_peminjaman():
   ])
   
   if simpan_peminjaman["simpan"]:
+    # tambah stok buku
+    for i, item in enumerate(list_buku):
+      if item["ISBN"] == data_peminjaman["ISBN"]:
+        list_buku[i]["stok"] = str(int(list_buku[i]["stok"]) + 1) 
+        ubah_file_json(path_buku, list_buku)
+        break
+
     list_peminjaman[index_peminjaman] = data_peminjaman
     ubah_file_json(path_peminjaman, list_peminjaman)
     
@@ -972,6 +995,7 @@ def menu_kembalikan_peminjaman():
     ])
     
     if kembalikan_peminjaman_lagi["kembalikan"]:
+      clear_screen()
       return True
   else:
     print(f'\n{Fore.RED}Buku gagal dikembalikan{Style.RESET_ALL}')

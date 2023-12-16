@@ -1,1 +1,34 @@
-[{"NIM": "1239123", "nama": "zidan", "jurusan": "Manajemen Informatika", "jenis_kelamin": "Perempuan", "no_telepon": "123213", "alamat": "adawd"}, {"nama": "Muhammad Zidane Sc", "jurusan": "Sistem Informasi", "jenis_kelamin": "Laki-laki", "no_telepon": "089530107193", "alamat": "Bekasi", "NIM": "19231022"}, {"NIM": "aadad", "nama": "ade", "jurusan": "awd", "jenis_kelamin": "awd", "no_telepon": "awd", "alamat": "awd"}, {"NIM": "ads", "nama": "ubah", "jurusan": "ubah", "jenis_kelamin": "ubah", "no_telepon": "ubah", "alamat": "ubah"}, {"NIM": "321", "nama": "ad", "jurusan": "ad", "jenis_kelamin": "ad", "no_telepon": "ad", "alamat": "ad"}, {"NIM": "123", "nama": "idan", "jurusan": "SI", "jenis_kelamin": "Non - Binary", "no_telepon": "01923", "alamat": "ad"}]
+[
+  {
+    "nama": "Muhammad Zidane Sc",
+    "jurusan": "Sistem Informasi",
+    "jenis_kelamin": "Laki-laki",
+    "no_telepon": "0812312312",
+    "alamat": "Wisma Atlet",
+    "NIM": "19231022"
+  },
+  {
+    "nama": "Muletss",
+    "jurusan": "Teknik Komputer",
+    "jenis_kelamin": "Laki-laki",
+    "no_telepon": "1293103",
+    "alamat": "Michat",
+    "NIM": "19231273"
+  },
+  {
+    "NIM": "19232152",
+    "nama": "Ferdian",
+    "jurusan": "Teknik Komputer",
+    "jenis_kelamin": "Laki-laki",
+    "no_telepon": "1290313",
+    "alamat": "Bogor"
+  },
+  {
+    "NIM": "19230240",
+    "nama": "Chris",
+    "jurusan": "Sistem Informasi",
+    "jenis_kelamin": "Perempuan",
+    "no_telepon": "01923012",
+    "alamat": "BEkasi"
+  }
+]
