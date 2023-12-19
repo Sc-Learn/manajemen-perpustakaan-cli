@@ -1,1380 +1,1032 @@
 import json
-import sys
+import os
 import time
 import datetime
+import colorama 
+from colorama import Fore, Style
+import getpass
+import inquirer
+from prettytable import PrettyTable
+
+#Inisialisasi colorama
+colorama.init(autoreset=True)
 
 # Maksimal percobaan login
 MAX_LOGIN = 3
 
 # credetial admin
 admin = {
-  "username": "123",
+  "username": "admin",
   "password": "123"
 }
 
-# struktur buku
-buku = {
-  "ISBN": None,
-  "judul": None,
-  "pengarang": None,
-  "penerbit": None,
-  "tahun_terbit": None,
-  "jumlah_halaman": None,
-  "stok": None,
-}
-
-# struktur anggota
-anggota = {
-  "NIM": None,
-  "nama": None,
-  "jurusan": None,
-  "jenis_kelamin": None,
-  "no_telepon": None,
-  "alamat": None,
-}
-
-# struktur peminjaman
-peminjaman = {
-  "NIM": None,
-  "ISBN": None,
-  "tanggal_pinjam": None,
-  "tanggal_kembali": None,
-  "status": None,
-}
-  
-
-# Mendefinisikan path file JSON
+# Mendefinisikan path file JSON untuk buku, anggota, dan peminjaman
 path_buku = "data/buku.json"
 path_anggota = "data/anggota.json"
 path_peminjaman = "data/peminjaman.json"
 
 # Membaca data buku dari file JSON
-with open(path_buku) as f:
+try:
+  with open(path_buku) as f:
     list_buku = json.load(f)
+except FileNotFoundError:
+  # buat file jika file tidak ditemukan
+  with open(path_buku, "w") as f:
+    json.dump([], f)
+  list_buku = []
 
 # Membaca data anggota dari file JSON
-with open(path_anggota) as f:
+try:
+  with open(path_anggota) as f:
     list_anggota = json.load(f)
+except FileNotFoundError:
+  # buat file jika file tidak ditemukan
+  with open(path_anggota, "w") as f:
+    json.dump([], f)
+  list_anggota = []
 
 # Membaca data peminjaman dari file JSON
-with open(path_peminjaman) as f:
+try:
+  with open(path_peminjaman) as f:
     list_peminjaman = json.load(f)
-
-# Fungsi utama
-def main():
-  # Menampilkan selamat datang dan judul program
-  print("="*56)
-  print(f'= {"Selamat Datang di Program Perpustakaan":^52} =')
-  print("="*56)
-  print(f'= {"Silahkan Login terlebih dahulu":^52} =')
-  print("="*56, end="\n")
+except FileNotFoundError:
+  # buat file jika file tidak ditemukan
+  with open(path_peminjaman, "w") as f:
+    json.dump([], f)
+  list_peminjaman = []
+    
+# fungsi mengubah data file JSON
+def ubah_file_json(lokasi_file, data):
+  with open(lokasi_file, 'w') as f:
+    json.dump(data, f)
+    
+# Fungsi clear screen terminal
+def clear_screen(tampilkan_header_aplikasi=True):
+  command = 'clear'
+  if os.name in ('nt', 'dos'):
+      command = 'cls'
+  os.system(command)
   
-  login(MAX_LOGIN)
-
-# Fungsi clear terminal
-def clear(jumlah_line_yang_dihapus = 1):
-  for _ in range(jumlah_line_yang_dihapus):
-    sys.stdout.write("\033[F")
-    sys.stdout.write("\033[K")
-
-# Fungsi loading
-def loading(waktu_loading = 1, teks_loading = "Loading"):
-  for i in range(1, 101):
-    print(f'\r{teks_loading}: {i}%', end="")
-    time.sleep(waktu_loading / 100)
-  print()
-
+  if tampilkan_header_aplikasi:
+    header()
+  
 # Fungsi keluar aplikasi
 def keluar_aplikasi():
-  print("Terima kasih telah menggunakan program ini")
+  print(f"{Fore.GREEN}Terima kasih telah menggunakan program ini{Style.RESET_ALL}")
   time.sleep(2)
-  clear(50)
-  sys.exit()
+  clear_screen(False)
+  # exit program using library os
+  os._exit(0)
 
-# Fungsi login
-def login(max_login = 3):
-  global user_login
-  username = input("\n> Username: ")
-  password = input("> Password: ")
+# Fungsi validasi inputan tidak boleh kosong
+def validasi_inputan_tidak_kosong(_, x):
+  if x == "":
+    raise inquirer.errors.ValidationError('', reason='Inputan tidak boleh kosong')
   
-  if username == admin["username"] and password == admin["password"]:
-    user_login = True
-    
-    print(f'\nLogin berhasil! Selamat datang {username}')
-    loading(1.5, "Menuju menu utama")
-    clear(9 if max_login == MAX_LOGIN else 12)
-    
-    menu_utama()
+  return True
+  
+# Fungsi validasi inputan harus angka
+def validasi_inputan_harus_angka(_, x):
+  validasi_inputan_tidak_kosong(_, x)
+  
+  if x.isdigit():
+    return True
   else:
-    clear(3 if max_login == MAX_LOGIN else 6)
-    
-    print("!"*56)
-    print(f'!! {"Username atau Password salah":^50} !!')
-    print("!"*56)
+    raise inquirer.errors.ValidationError('', reason='Inputan harus angka')
 
-    login(max_login - 1) if max_login > 1 else sys.exit("Terlalu banyak percobaan login")
+# Fungsi validasi buku baru ISBN
+def validasi_buku_baru_isbn(_, x):
+  validasi_inputan_tidak_kosong(_, x)
+  
+  # cari apakah ISBN sudah ada di list buku
+  for buku in list_buku:
+    if buku["ISBN"] == x:
+      raise inquirer.errors.ValidationError('', reason='Buku sudah terdaftar')
+    
+  return True
+
+# Fungsi validasi ubah buku ISBN
+def validasi_ubah_buku_isbn(_, x):
+  validasi_inputan_tidak_kosong(_, x)
+  
+  for buku in list_buku:
+    if buku["ISBN"] == x:
+      return True
+    
+  raise inquirer.errors.ValidationError('', reason='ISBN tidak ditemukan')
+
+# Fungsi validasi anggota baru NIM
+def validasi_anggota_baru_nim(_, x):
+  validasi_inputan_tidak_kosong(_, x)
+  
+  # cari apakah NIM sudah ada di list anggota
+  for anggota in list_anggota:
+    if anggota["NIM"] == x:
+      raise inquirer.errors.ValidationError('', reason='Anggota sudah terdaftar')
+    
+  return True
+
+# Fungsi validasi ubah anggota NIM
+def validasi_ubah_anggota_nim(_, x):
+  validasi_inputan_tidak_kosong(_, x)
+  
+  for anggota in list_anggota:
+    if anggota["NIM"] == x:
+      return True
+    
+  raise inquirer.errors.ValidationError('', reason='NIM tidak ditemukan')
+
+# Fungsi validasi tanggal
+def validasi_tanggal(_, x):
+  validasi_inputan_tidak_kosong(_, x)
+  
+  try:
+    datetime.datetime.strptime(x, '%d-%m-%Y')
+  except ValueError:
+    raise inquirer.errors.ValidationError('', reason='Format tanggal salah')
+    
+  return True
+
+# fungsi validasi tanggal pinjam (ketika kembalikan buku)
+def validasi_tanggal_pinjam(_, x):
+  validasi_tanggal(_, x)
+
+  # cari data peminjaman berdasarkan NIM dan ISBN daan tanggal pinjam
+  for peminjaman in list_peminjaman:
+    if peminjaman["NIM"] == _["NIM"] and peminjaman["ISBN"] == _["ISBN"] and peminjaman["tanggal_pinjam"] == x:
+      return True
+    
+  raise inquirer.errors.ValidationError('', reason='Data peminjaman tidak ditemukan')
+  
+# Fungsi validasi tanggal kembali
+def validasi_tanggal_kembali(_, x):
+  validasi_tanggal(_, x)
+  
+  tanggal_pinjam = _["tanggal_pinjam"]
+  tanggal_kembali = x
+  
+  tanggal_pinjam = datetime.datetime.strptime(tanggal_pinjam, '%d-%m-%Y')
+  tanggal_kembali = datetime.datetime.strptime(tanggal_kembali, '%d-%m-%Y')
+  
+  if tanggal_kembali < tanggal_pinjam:
+    raise inquirer.errors.ValidationError('', reason='Tanggal kembali harus lebih besar dari tanggal pinjam')
+    
+  return True
+
+# Fungsi validasi buku tersedia
+def validasi_buku_tersedia(_, x):
+  validasi_inputan_tidak_kosong(_, x)
+  
+  # cari apakah ISBN sudah ada di list buku
+  for buku in list_buku:
+    if buku["ISBN"] == x:
+      if int(buku["stok"]) > 0:
+        return True
+      else:
+        raise inquirer.errors.ValidationError('', reason='Buku tidak tersedia')
+    
+  raise inquirer.errors.ValidationError('', reason='ISBN tidak ditemukan')
+
+# Fungsi untuk menampilkan header aplikasi
+def header():
+  print("="*56)
+  print(f'= {Fore.CYAN}{"Selamat Datang di Program Perpustakaan":^52}{Style.RESET_ALL} =')
+  print("="*56)
+  
+# Fungsi menampilkan pesan error
+def tampikan_pesan_error(pesan_error):
+  print("!"*56)
+  print(f'!! {Fore.RED}{pesan_error:^50}{Style.RESET_ALL} !!')
+  print("!"*56)
+  print("="*56)
+  
+# Fungsi Utama
+def main():
+  clear_screen()
+  
+  # Login
+  user_login = False
+  percobaaan_login = 1
+  pesan_error = None
+  while not user_login:
+    user_login, pesan_error = login(pesan_error)
+    
+    if not user_login and percobaaan_login < MAX_LOGIN:
+      clear_screen()
+      percobaaan_login += 1
+    elif not user_login and percobaaan_login >= MAX_LOGIN:
+      print(f'\n{Fore.RED}Terlalu banyak percobaan login{Style.RESET_ALL}')
+      time.sleep(2)
+      clear_screen(False)
+      os._exit(0)
+    else:
+      print(f'\n{Fore.GREEN}Login berhasil! Selamat datang admin{Style.RESET_ALL}')
+      time.sleep(2)
+      clear_screen()
+      break 
+    
+  # Menu Utama
+  keluar = False
+  while not keluar:
+    pilihan_menu = menu_utama()
+    
+    if pilihan_menu == "Buku":
+      menu_kelola_buku()     
+    elif pilihan_menu == "Anggota":
+      menu_kelola_anggota()
+    elif pilihan_menu == "Peminjaman":
+      menu_kelola_peminjaman()
+    elif pilihan_menu == "Keluar":
+      keluar = True
+      
+  keluar_aplikasi()
+
+# Fungsi Login
+def login(pesan_error=None):
+  if pesan_error:
+    tampikan_pesan_error(pesan_error)
+  
+  print(f'= {Fore.BLUE}{"Silahkan Login terlebih dahulu":^52}{Style.RESET_ALL} =')
+  print("="*56, end="\n\n")
+  
+  username = input(f"> {Fore.MAGENTA}Username:{Style.RESET_ALL} ")
+  password = getpass.getpass(prompt=f"> {Fore.MAGENTA}Password:{Style.RESET_ALL} ")
+  
+  if username == admin["username"] and password == admin["password"]:    
+    return True, None
+  else:
+    return False, "Username atau Password salah"
 
 # Fungsi menampilkan menu utama
-def menu_utama(error = False):
-  print(f'{"="*56}\n= {" Menu Utama":^52} =\n{"="*56}')
-  print(f'| {"(1) Kelola Buku":<52} |')
-  print(f'| {"(2) Kelola Anggota":<52} |')
-  print(f'| {"(3) Kelola Peminjaman dan Pengembalian":<52} |')
-  print(f'| {"(4) Keluar Aplikasi":<52} |')
-  print("="*56, end="\n\n")
+def menu_utama():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Menu Utama":^52}{Style.RESET_ALL} =\n{"="*56}')
   
-  pilihan = input("> Pilih menu (1-4): ")
+  pilihan_menu = inquirer.prompt([
+    inquirer.List('menu',
+                  message="Silahkan pilih menu",
+                  choices=['Buku', 'Anggota', 'Peminjaman', 'Keluar'],
+              ),
+  ])
   
-  if pilihan == "1":
-    clear(14 if error else 10)
-    menu_kelola_buku()
-  elif pilihan == "2":
-    clear(14 if error else 10)
-    menu_kelola_anggota()
-  elif pilihan == "3":
-    clear(14 if error else 10)
-    menu_kelola_peminjaman_dan_pengembalian()
-  elif pilihan == "4":
-    keluar_aplikasi()
-  else:
-    clear(13 if error else 9)
-    print("!"*56)
-    print(f'!! {"Pilihan tidak tersedia":^50} !!')
-    print("!"*56)
+  clear_screen()
+  return pilihan_menu["menu"]
+  
+# Fungsi kelola buku
+def menu_kelola_buku():
+  while True:
+    print(f'= {Fore.LIGHTBLUE_EX}{" Menu Kelola Buku":^52}{Style.RESET_ALL} =\n{"="*56}')
     
-    menu_utama(error=True)
-
-# Fungsi menampilkan menu kelola buku
-def menu_kelola_buku(error = False):
-  print(f'{"="*56}\n= {"Menu Kelola Buku":^52} =\n{"="*56}')
-  print(f'| {"(1) Tambah Buku":<52} |')
-  print(f'| {"(2) Lihat Buku":<52} |')
-  print(f'| {"(3) Edit Buku":<52} |')
-  print(f'| {"(4) Hapus Buku":<52} |')
-  print(f'| {"(5) Kembali Ke Menu Utama":<52} |')
-  print(f'| {"(6) Keluar Aplikasi":<52} |')
-  print("="*56, end="\n\n")
-  
-  pilihan = input("> Pilih menu (1-6): ")
-  
-  if pilihan == "1":
-    clear(16 if error else 12)
-    menu_tambah_buku()
-  elif pilihan == "2":
-    clear(16 if error else 12)
-    menu_lihat_buku()
-  elif pilihan == "3":
-    clear(16 if error else 12)
-    menu_edit_buku()
-  elif pilihan == "4":
-    clear(16 if error else 12)
-    menu_hapus_buku()
-  elif pilihan == "5":
-    clear(16 if error else 12)
-    menu_utama()
-  elif pilihan == "6":
-    keluar_aplikasi()
-  else:
-    clear(15 if error else 11)
-    print("!"*56)
-    print(f'!! {"Pilihan tidak tersedia":^50} !!')
-    print("!"*56)
+    pilihan_menu = inquirer.prompt([
+      inquirer.List('menu',
+                    message="Silahkan pilih menu",
+                    choices=['Tambah Buku', 'Ubah Buku', 'Hapus Buku', 'Lihat Buku', 'Kembali'],
+                ),
+    ])["menu"]
     
-    menu_kelola_buku(error=True)
+    clear_screen()
     
-buku_baru = buku.copy()
-# Fungsi menambahkan buku
-def menu_tambah_buku(error = False):
-  global buku_baru
-
-  print(f'{"="*56}\n= {"Tambah Buku":^52} =\n{"="*56}\n')
-  
-  if buku_baru["judul"] == None:
-    judul = input("> Judul: ")
-    if judul == "":
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"Judul tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_buku(error=True)
-    else:
-      clear(9 if error else 5)
-      buku_baru["judul"] = judul
-      menu_tambah_buku(error=False)
-  else:
-    print("Judul:", buku_baru["judul"])
-    
-  if buku_baru["ISBN"] == None:
-    isbn = input("> ISBN: ")
-    if isbn == "":
-      clear(9 if error else 5)
-      print("!"*56)
-      print(f'!! {"ISBN tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_buku(error=True)
-    else:
-      clear(10 if error else 6)
-      buku_baru["ISBN"] = isbn
-      menu_tambah_buku(error=False)
-  else:
-    print("ISBN:", buku_baru["ISBN"])
-  
-  if buku_baru["pengarang"] == None:
-    pengarang = input("> Pengarang: ")
-    if pengarang == "":
-      clear(10 if error else 6)
-      print("!"*56)
-      print(f'!! {"Pengarang tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_buku(error=True)
-    else:
-      clear(11 if error else 7)
-      buku_baru["pengarang"] = pengarang
-      menu_tambah_buku(error=False)
-  else:
-    print("Pengarang:", buku_baru["pengarang"])
-  
-  if buku_baru["penerbit"] == None:
-    penerbit = input("> Penerbit: ")
-    if penerbit == "":
-      clear(11 if error else 7)
-      print("!"*56)
-      print(f'!! {"Penerbit tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_buku(error=True)
-    else:
-      clear(12 if error else 8)
-      buku_baru["penerbit"] = penerbit
-      menu_tambah_buku(error=False)
-  else:
-    print("Penerbit:", buku_baru["penerbit"])
-  
-  if buku_baru["tahun_terbit"] == None:
-    tahun_terbit = input("> Tahun Terbit: ")
-    if tahun_terbit == "":
-      clear(12 if error else 8)
-      print("!"*56)
-      print(f'!! {"Tahun Terbit tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_buku(error=True)
-    else:
-      clear(13 if error else 9)
-      buku_baru["tahun_terbit"] = tahun_terbit
-      menu_tambah_buku(error=False)
-  else:
-    print("Tahun Terbit:", buku_baru["tahun_terbit"])
-  
-  if buku_baru["jumlah_halaman"] == None:
-    jumlah_halaman = input("> Jumlah Halaman: ")
-    if jumlah_halaman == "":
-      clear(13 if error else 9)
-      print("!"*56)
-      print(f'!! {"Jumlah Halaman tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_buku(error=True)
-    else:
-      clear(14 if error else 10)
-      buku_baru["jumlah_halaman"] = jumlah_halaman
-      menu_tambah_buku(error=False)
-  else:
-    print("Jumlah Halaman:", buku_baru["jumlah_halaman"])
-      
-  if buku_baru["stok"] == None:
-    stok = input("> Stok: ")
-    if stok == "":
-      clear(14 if error else 10)
-      print("!"*56)
-      print(f'!! {"Stok harus diisi":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_buku(error=True)
-    else:
-      try:
-        stok = int(stok)
-      except:
-        clear(14 if error else 10)
-        print("!"*56)
-        print(f'!! {"Stok harus berupa angka":^50} !!')
-        print("!"*56)
+    if pilihan_menu == "Tambah Buku":
+      tambah_buku = True
+      while tambah_buku:
+        tambah_buku = menu_tambah_buku()     
+    elif pilihan_menu == "Ubah Buku":
+      ubah_buku = True
+      while ubah_buku:
+        ubah_buku = menu_ubah_buku()
+    elif pilihan_menu == "Hapus Buku":
+      hapus_buku = True
+      while hapus_buku:
+        hapus_buku = menu_hapus_buku()
+    elif pilihan_menu == "Lihat Buku":
+      lihat_buku = True
+      halaman = 1
+      while lihat_buku:
+        pilihan_menu_lihat_buku = menu_lihat_buku(halaman)
         
-        menu_tambah_buku(error=True)
-      
-      clear(15 if error else 11)
-      buku_baru["stok"] = stok
-      menu_tambah_buku(error=False)
-  else:
-    print("Stok:", buku_baru["stok"])
-
-  simpan = input("\n> Simpan buku (y/n): ").lower()
-  
-  if simpan == "y":
-    list_buku.insert(0, buku_baru)
-    with open(path_buku, "w") as f:
-      json.dump(list_buku, f)
-      
-    print("\nBuku berhasil disimpan!")
-    time.sleep(2.5)
-    
-    clear(16 if error else 12)
-    
-    tambah_lagi = input("\n> Tambah buku lagi (y/n): ").lower()
-    buku_baru = buku.copy()
-    clear(5)
-    
-    if tambah_lagi == "y":
-      menu_tambah_buku(error=False)
+        if pilihan_menu_lihat_buku == "Halaman Sebelumnya":
+          halaman -= 1
+        elif pilihan_menu_lihat_buku == "Halaman Selanjutnya":
+          halaman += 1
+        elif pilihan_menu_lihat_buku == "Kembali":
+          lihat_buku = False
     else:
-      menu_kelola_buku(error=False)
-  else:
-    print("\nBatal!\n")
-    buku_baru = buku.copy()
-    loading(1, "Menuju menu kelola buku")
-    clear(21 if error else 17)
-    menu_kelola_buku(error=False)
+      break
+  
+# Fungsi tambah buku
+def menu_tambah_buku():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Tambah Buku":^52}{Style.RESET_ALL} =\n{"="*56}')
+  
+  pertanyaan = [
+    inquirer.Text('ISBN',
+                  message="ISBN",
+                  validate=validasi_buku_baru_isbn
+              ),
+    inquirer.Text('judul',
+                  message="Judul",
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.Text('pengarang',
+                  message="Pengarang",
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.Text('penerbit',
+                  message="Penerbit",
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.Text('tahun_terbit',
+                  message="Tahun Terbit",
+                  validate=validasi_inputan_harus_angka
+              ),
+    inquirer.Text('jumlah_halaman',
+                  message="Jumlah Halaman",
+                  validate=validasi_inputan_harus_angka
+              ),
+    inquirer.Text('stok',
+                  message="Stok",
+                  validate=validasi_inputan_harus_angka
+              ),
+  ]  
+  
+  data_buku = inquirer.prompt(pertanyaan)
+  simpan_buku = inquirer.prompt([
+    inquirer.Confirm('simpan',
+                  message="Simpan data buku?"
+              ),
+  ])
 
-# Fungsi menampilkan buku
-def menu_lihat_buku(error = False, halaman = 1):
-  print(f'{"="*56}\n= {" List Buku":^52} =\n{"="*56}\n')
+  if simpan_buku["simpan"]:    
+    list_buku.insert(0, data_buku)
+    ubah_file_json(path_buku, list_buku)
+    
+    print(f'\n{Fore.GREEN}Buku berhasil disimpan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+    tambah_buku_lagi = inquirer.prompt([
+      inquirer.Confirm('tambah',
+                    message="Tambah buku lagi?"
+                ),
+    ])
+    
+    
+    if tambah_buku_lagi["tambah"]:
+      clear_screen()
+      return True
+  else:
+    print(f'\n{Fore.RED}Buku tidak disimpan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+  clear_screen() 
+  return False
+
+# Fungsi ubah buku
+def menu_ubah_buku():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Ubah Buku":^52}{Style.RESET_ALL} =\n{"="*56}')
+  
+  isbn = inquirer.prompt([
+    inquirer.Text('ISBN',
+                  message="ISBN",
+                  validate=validasi_ubah_buku_isbn
+              ),
+  ])["ISBN"]
+  
+  # cari buku dan index buku berdasarkan ISBN
+  buku = None
+  index_buku = None
+  for i, item in enumerate(list_buku):
+    if item["ISBN"] == isbn:
+      buku = item
+      index_buku = i
+      break
+  
+  pertanyaan = [
+    inquirer.Text('judul',
+                  message="Judul",
+                  default=buku["judul"],
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.Text('pengarang',
+                  message="Pengarang",
+                  default=buku["pengarang"],
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.Text('penerbit',
+                  message="Penerbit",
+                  default=buku["penerbit"],
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.Text('tahun_terbit',
+                  message="Tahun Terbit",
+                  default=buku["tahun_terbit"],
+                  validate=validasi_inputan_harus_angka
+              ),
+    inquirer.Text('jumlah_halaman',
+                  message="Jumlah Halaman",
+                  default=buku["jumlah_halaman"],
+                  validate=validasi_inputan_harus_angka
+              ),
+    inquirer.Text('stok',
+                  message="Stok",
+                  default=buku["stok"],
+                  validate=validasi_inputan_harus_angka
+              ),
+  ] 
+  
+  data_buku = inquirer.prompt(pertanyaan)
+  simpan_buku = inquirer.prompt([
+    inquirer.Confirm('simpan',
+                  message="Simpan data buku?"
+              ),
+  ])
+  
+  if simpan_buku["simpan"]:    
+    list_buku[index_buku] = data_buku
+    list_buku[index_buku]["ISBN"] = isbn
+    ubah_file_json(path_buku, list_buku)
+    
+    print(f'\n{Fore.GREEN}Buku berhasil disimpan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+    ubah_buku_lagi = inquirer.prompt([
+      inquirer.Confirm('ubah',
+                    message="Ubah buku lagi?"
+                ),
+    ])
+    
+    if ubah_buku_lagi["ubah"]:
+      clear_screen()
+      return True
+  else:
+    print(f'\n{Fore.RED}Buku tidak disimpan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+  clear_screen()
+  return False  
+
+# Fungsi hapus buku
+def menu_hapus_buku():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Hapus Buku":^52}{Style.RESET_ALL} =\n{"="*56}')
+  
+  isbn = inquirer.prompt([
+    inquirer.Text('ISBN',
+                  message="ISBN",
+                  validate=validasi_ubah_buku_isbn
+              ),
+  ])["ISBN"]
+  
+  # cari buku dan index buku berdasarkan ISBN
+  buku = None
+  index_buku = None
+  for i, item in enumerate(list_buku):
+    if item["ISBN"] == isbn:
+      buku = item
+      index_buku = i
+      break
+    
+  print(f'\n{Fore.YELLOW}Data buku yang akan dihapus:{Style.RESET_ALL}')
+  print(f'ISBN: {buku["ISBN"]}')
+  print(f'Judul: {buku["judul"]}')
+  print(f'Pengarang: {buku["pengarang"]}')
+  print(f'Penerbit: {buku["penerbit"]}')
+  print(f'Tahun Terbit: {buku["tahun_terbit"]}')
+  print(f'Jumlah Halaman: {buku["jumlah_halaman"]}')
+  print(f'Stok: {buku["stok"]}\n\n')
+  
+  hapus_buku = inquirer.prompt([
+    inquirer.Confirm('hapus',
+                  message="Hapus data buku?"
+              ),
+  ])
+  
+  if hapus_buku["hapus"]:    
+    list_buku.pop(index_buku)
+    ubah_file_json(path_buku, list_buku)
+    
+    print(f'\n{Fore.GREEN}Buku berhasil dihapus{Style.RESET_ALL}')
+    time.sleep(2)
+    
+    hapus_buku_lagi = inquirer.prompt([
+      inquirer.Confirm('hapus',
+                    message="Hapus buku lagi?"
+                ),
+    ])
+    
+    if hapus_buku_lagi["hapus"]:
+      clear_screen()
+      return True
+  else:
+    print(f'\n{Fore.RED}Buku tidak dihapus{Style.RESET_ALL}')
+    time.sleep(2)
+    
+  clear_screen()
+  return False
+
+# Fungsi lihat buku
+def menu_lihat_buku(halaman=1):
+  print(f'= {Fore.LIGHTBLUE_EX}{" Lihat Buku":^52}{Style.RESET_ALL} =\n{"="*56}')
   
   total_buku = len(list_buku)
   total_halaman = total_buku // 5 + 1 if total_buku % 5 != 0 else total_buku // 5
   skip = (halaman - 1) * 5
   
-  print(f'{"="*148}\n= {" Halaman " + str(halaman) + " dari " + str(total_halaman):^144} =\n{"="*148}')
-  print(f'| {"No":^4} | {"ISBN":<13} | {"Judul":<25} | {"Pengarang":<25} | {"Penerbit":<25} | {"Tahun Terbit":^12} | {"Jumlah Halaman":^15} | {"Stok":^4} |')
-  print(f'{"="*148}')
+  table = PrettyTable()
+  table.title = f"Halaman {halaman} dari {total_halaman}"
+  table.field_names = ["No", "ISBN", "Judul", "Pengarang", "Penerbit", "Tahun Terbit", "Jumlah Halaman", "Stok"]
   
-  for i in range(skip, skip + 5):
-    if i < total_buku:
-      print(f'| {i+1:<4} | {list_buku[i]["ISBN"]:<13} | {list_buku[i]["judul"]:<25} | {list_buku[i]["pengarang"]:<25} | {list_buku[i]["penerbit"]:<25} | {list_buku[i]["tahun_terbit"]:^12} | {list_buku[i]["jumlah_halaman"]:^15} | {list_buku[i]["stok"]:^4} |')
-    else:
-      print(f'| {"":<4} | {"":<13} | {"":<25} | {"":<25} | {"":<25} | {"":^12} | {"":<15} | {"":^4} |')
-      
-  print(f'{"="*148}\n\n{"="*56}')
+  for i, item in enumerate(list_buku[skip:skip+5]):
+    table.add_row([i+1+skip, item["ISBN"], item["judul"], item["pengarang"], item["penerbit"], item["tahun_terbit"], item["jumlah_halaman"], item["stok"]])
+    
+  print(table)
   
+  menu = []
   if halaman > 1:
-    print(f'| {"(1) Halaman Sebelumnya":<52} |')
+    menu.append("Halaman Sebelumnya")
   
   if halaman < total_halaman:
-    print(f'| {"(2) Halaman Selanjutnya":<52} |')
+    menu.append("Halaman Selanjutnya") 
     
-  print(f'| {"(3) Kembali Ke Menu Kelola Buku":<52} |')
-  print(f'| {"(4) Keluar Aplikasi":<52} |')
+  menu.append("Kembali") 
   
-  print("="*56, end="\n\n")
+  pilihan_menu = inquirer.prompt([
+    inquirer.List('menu',
+                    message="Silahkan pilih menu",
+                    choices=menu,
+                ),
+  ])["menu"]
   
-  pilihan = input("> Pilih menu (1-4): ")
+  clear_screen()
   
-  if pilihan == "1":
-    clear(27 if error else 23)
-
-    if halaman > 1:
-      menu_lihat_buku(error=False, halaman=halaman-1)
-    else:
-      menu_lihat_buku(error=False, halaman=halaman)
-  elif pilihan == "2":
-    clear(27 if error else 23)
-
-    if halaman < total_halaman:
-      menu_lihat_buku(error=False, halaman=halaman+1)
-    else:
-      menu_lihat_buku(error=False, halaman=halaman)
-  elif pilihan == "3":
-    clear(27 if error else 23)
-    menu_kelola_buku()
-  elif pilihan == "4":
-    keluar_aplikasi()
-  else:
-    clear(26 if error else 22)
-    print("!"*56)
-    print(f'!! {"Pilihan tidak tersedia":^50} !!')
-    print("!"*56)
+  return pilihan_menu
+  
+# Fungsi kelola anggota
+def menu_kelola_anggota():
+  while True:
+    print(f'= {Fore.LIGHTBLUE_EX}{" Menu Kelola Anggota":^52}{Style.RESET_ALL} =\n{"="*56}')
+  
+    pilihan_menu = inquirer.prompt([
+      inquirer.List('menu',
+                    message="Silahkan pilih menu",
+                    choices=['Tambah Anggota', 'Ubah Anggota', 'Hapus Anggota', 'Lihat Anggota', 'Kembali'],
+                ),
+    ])["menu"]
     
-    menu_lihat_buku(error=True, halaman=halaman)
-
-# Fungsi mengedit buku
-buku_edit = buku.copy()
-def menu_edit_buku(error = False, buku_terpilih = None):
-  global buku_edit
-  
-  print(f'{"="*56}\n= {" Edit Buku":^52} =\n{"="*56}\n')
-  
-  if buku_terpilih == None:
-    isbn = input("> ISBN: ")
-    if isbn == "":
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"ISBN tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_edit_buku(error=True)
-    else:
-      clear(9 if error else 5)
-      menu_edit_buku(error=False, buku_terpilih=isbn)
+    clear_screen()
     
-  if buku_terpilih != None:
-    for i in range(len(list_buku)):
-      if list_buku[i]["ISBN"] == buku_terpilih:
-        print("ISBN:", list_buku[i]["ISBN"], " | Judul:", list_buku[i]["judul"], " | Pengarang:", list_buku[i]["pengarang"], " | Penerbit:", list_buku[i]["penerbit"], " | Tahun Terbit:", list_buku[i]["tahun_terbit"], " | Jumlah Halaman:", list_buku[i]["jumlah_halaman"], " | Stok:", list_buku[i]["stok"], end="\n\n")
+    if pilihan_menu == "Tambah Anggota":
+      tambah_anggota = True
+      while tambah_anggota:
+        tambah_anggota = menu_tambah_anggota()
+    elif pilihan_menu == "Ubah Anggota":
+      ubah_anggota = True
+      while ubah_anggota:
+        ubah_anggota = menu_ubah_anggota()
+    elif pilihan_menu == "Hapus Anggota":
+      hapus_anggota = True
+      while hapus_anggota:
+        hapus_anggota = menu_hapus_anggota()
+    elif pilihan_menu == "Lihat Anggota":
+      lihat_anggota = True
+      halaman = 1
+      while lihat_anggota:
+        pilihan_menu_lihat_anggota = menu_lihat_anggota(halaman)
         
-        if buku_edit["judul"] == None:
-          judul = input("> Judul: ")
-          if judul == "":
-            clear(10 if error else 6)
-            print("!"*56)
-            print(f'!! {"Judul tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_buku(error=True, buku_terpilih=buku_terpilih)
-          else:
-            clear(11 if error else 7)
-            buku_edit["judul"] = judul
-            menu_edit_buku(error=False, buku_terpilih=buku_terpilih)
-        else:
-          print("Judul:", buku_edit["judul"])
-        
-        if buku_edit["pengarang"] == None:
-          pengarang = input("> Pengarang: ")
-          if pengarang == "":
-            clear(11 if error else 7)
-            print("!"*56)
-            print(f'!! {"Pengarang tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_buku(error=True, buku_terpilih=buku_terpilih)
-          else:
-            clear(12 if error else 8)
-            buku_edit["pengarang"] = pengarang
-            menu_edit_buku(error=False, buku_terpilih=buku_terpilih)
-        else:
-          print("Pengarang:", buku_edit["pengarang"])
-          
-        if buku_edit["penerbit"] == None:
-          penerbit = input("> Penerbit: ")
-          if penerbit == "":
-            clear(12 if error else 8)
-            print("!"*56)
-            print(f'!! {"Penerbit tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_buku(error=True, buku_terpilih=buku_terpilih)
-          else:
-            clear(13 if error else 9)
-            buku_edit["penerbit"] = penerbit
-            menu_edit_buku(error=False, buku_terpilih=buku_terpilih)
-        else:
-          print("Penerbit:", buku_edit["penerbit"])
-          
-        if buku_edit["tahun_terbit"] == None:
-          tahun_terbit = input("> Tahun Terbit: ")
-          if tahun_terbit == "":
-            clear(13 if error else 9)
-            print("!"*56)
-            print(f'!! {"Tahun Terbit tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_buku(error=True, buku_terpilih=buku_terpilih)
-          else:
-            clear(14 if error else 10)
-            buku_edit["tahun_terbit"] = tahun_terbit
-            menu_edit_buku(error=False, buku_terpilih=buku_terpilih)
-        else:
-          print("Tahun Terbit:", buku_edit["tahun_terbit"])
-          
-        if buku_edit["jumlah_halaman"] == None:
-          jumlah_halaman = input("> Jumlah Halaman: ")
-          if jumlah_halaman == "":
-            clear(14 if error else 10)
-            print("!"*56)
-            print(f'!! {"Jumlah Halaman tidak boleh kosong":^50} !!')
-            print("!"*56)
-          
-            menu_edit_buku(error=True, buku_terpilih=buku_terpilih)
-          else:
-            clear(15 if error else 11)
-            buku_edit["jumlah_halaman"] = jumlah_halaman
-            menu_edit_buku(error=False, buku_terpilih=buku_terpilih)
-        else:
-          print("Jumlah Halaman:", buku_edit["jumlah_halaman"])
-          
-        if buku_edit["stok"] == None:
-          stok = input("> Stok: ")
-          if stok == "":
-            clear(15 if error else 11)
-            print("!"*56)
-            print(f'!! {"Stok harus diisi":^50} !!')
-            print("!"*56)
-            
-            menu_edit_buku(error=True, buku_terpilih=buku_terpilih)
-          else:
-            try:
-              stok = int(stok)
-            except:
-              clear(15 if error else 11)
-              print("!"*56)
-              print(f'!! {"Stok harus berupa angka":^50} !!')
-              print("!"*56)
-              
-              menu_edit_buku(error=True, buku_terpilih=buku_terpilih)
-            
-            clear(16 if error else 12)
-            buku_edit["stok"] = stok
-            menu_edit_buku(error=False, buku_terpilih=buku_terpilih)
-        else:
-          print("Stok:", buku_edit["stok"])
-          
-        ubah = input("\n> Ubah buku (y/n): ").lower()
-        
-        if ubah == "y":
-          list_buku[i] = buku_edit
-          list_buku[i]["ISBN"] = buku_terpilih
-          with open(path_buku, "w") as f:
-            json.dump(list_buku, f)
-            
-          print("\nBuku berhasil diubah!")
-          time.sleep(2.5)
-          
-          clear(17 if error else 13)
-          
-          ubah_lagi = input("\n> Ubah buku lagi (y/n): ").lower()
-          buku_edit = buku.copy()
-          clear(5)
-          
-          if ubah_lagi == "y":
-            menu_edit_buku(error=False, buku_terpilih=None)
-          else:
-            menu_kelola_buku(error=False)
-        else:
-          print("\nBatal!\n")
-          buku_edit = buku.copy()
-          loading(1, "Menuju menu kelola buku")
-          clear(22 if error else 18)
-          menu_kelola_buku(error=False)      
-  
-  print("Buku tidak ditemukan!")
-  loading(1, "Menuju menu kelola buku")
-  clear(10 if error else 6)
-  menu_kelola_buku(error=False)
+        if pilihan_menu_lihat_anggota == "Halaman Sebelumnya":
+          halaman -= 1
+        elif pilihan_menu_lihat_anggota == "Halaman Selanjutnya":
+          halaman += 1
+        elif pilihan_menu_lihat_anggota == "Kembali":
+          lihat_anggota = False
+    else:
+      break
 
-# Fungsi menghapus buku
-def menu_hapus_buku(error = False):
-  print(f'{"="*56}\n= {" Hapus Buku":^52} =\n{"="*56}\n')
+# Fungsi tambah anggota
+def menu_tambah_anggota():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Tambah Anggota":^52}{Style.RESET_ALL} =\n{"="*56}')
   
-  isbn = input("> ISBN: ")
-  if isbn == "":
-    clear(8 if error else 4)
-    print("!"*56)
-    print(f'!! {"ISBN tidak boleh kosong":^50} !!')
-    print("!"*56)
+  pertanyaan = [
+    inquirer.Text('NIM',
+                  message="NIM",
+                  validate=validasi_anggota_baru_nim
+              ),
+    inquirer.Text('nama',
+                  message="Nama",
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.List('jurusan',
+                  message="Jurusan",
+                  choices=['Teknik Informatika', 'Sistem Informasi', 'Teknik Komputer', 'Manajemen Informatika'],
+              ),
+    inquirer.List('jenis_kelamin',
+                  message="Jenis Kelamin",
+                  choices=['Laki-laki', 'Perempuan'],
+              ),
+    inquirer.Text('no_telepon',
+                  message="No Telepon",
+                  validate=validasi_inputan_harus_angka
+              ),
+    inquirer.Text('alamat',
+                  message="Alamat",
+                  validate=validasi_inputan_tidak_kosong
+              ),
+  ]
+  
+  data_anggota = inquirer.prompt(pertanyaan)
+  simpan_anggota = inquirer.prompt([
+    inquirer.Confirm('simpan',
+                  message="Simpan data anggota?"
+              ),
+  ])
+  
+  if simpan_anggota["simpan"]:
+    list_anggota.insert(0, data_anggota)
+    ubah_file_json(path_anggota, list_anggota)
     
-    menu_hapus_buku(error=True)
+    print(f'\n{Fore.GREEN}Anggota berhasil disimpan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+    tambah_anggota_lagi = inquirer.prompt([
+      inquirer.Confirm('tambah',
+                    message="Tambah anggota lagi?"
+                ),
+    ])
+    
+    if tambah_anggota_lagi["tambah"]:
+      clear_screen()
+      return True
   else:
-    clear(5 if error else 1)
+    print(f'\n{Fore.RED}Anggota tidak disimpan{Style.RESET_ALL}')
+    time.sleep(2)
     
-    for i in range(len(list_buku)):
-      if list_buku[i]["ISBN"] == isbn:
-        print("ISBN:", list_buku[i]["ISBN"], " | Judul:", list_buku[i]["judul"], " | Pengarang:", list_buku[i]["pengarang"], " | Penerbit:", list_buku[i]["penerbit"], " | Tahun Terbit:", list_buku[i]["tahun_terbit"], " | Jumlah Halaman:", list_buku[i]["jumlah_halaman"], " | Stok:", list_buku[i]["stok"], end="\n\n")
-        
-        hapus = input("\n> Hapus buku (y/n): ").lower()
-        
-        if hapus == "y":
-          list_buku.pop(i)
-          with open(path_buku, "w") as f:
-            json.dump(list_buku, f)
-            
-          print("\nBuku berhasil dihapus!")
-          time.sleep(2.5)
-          
-          clear(11 if error else 7)
-          
-          hapus_lagi = input("\n> Hapus buku lagi (y/n): ").lower()
-          clear(5)
-          
-          if hapus_lagi == "y":
-            menu_hapus_buku(error=False)
-          else:
-            menu_kelola_buku(error=False)
-        else:
-          print("\nBatal!\n")
-          loading(1, "Menuju menu kelola buku")
-          clear(16 if error else 12)
-          menu_kelola_buku(error=False)
-      
-  print("Buku tidak ditemukan!")
-  loading(1, "Menuju menu kelola buku")
-  clear(10 if error else 6)
-  menu_kelola_buku(error=False)
+  clear_screen()
+  return False
 
-# Fungsi menampilkan menu kelola anggota
-def menu_kelola_anggota(error = False):
-  print(f'{"="*56}\n= {" Menu Kelola Anggota":^52} =\n{"="*56}')
-  print(f'| {"(1) Tambah Anggota":<52} |')
-  print(f'| {"(2) Lihat Anggota":<52} |')
-  print(f'| {"(3) Edit Anggota":<52} |')
-  print(f'| {"(4) Hapus Anggota":<52} |')
-  print(f'| {"(5) Kembali Ke Menu Utama":<52} |')
-  print(f'| {"(6) Keluar Aplikasi":<52} |')
-  print("="*56, end="\n\n")
+# Fungsi ubah anggota
+def menu_ubah_anggota():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Ubah Anggota":^52}{Style.RESET_ALL} =\n{"="*56}')
   
-  pilihan = input("> Pilih menu (1-6): ")
+  nim = inquirer.prompt([
+    inquirer.Text('NIM',
+                  message="NIM",
+                  validate=validasi_ubah_anggota_nim
+              ),
+  ])["NIM"]
   
-  if pilihan == "1":
-    clear(16 if error else 12)
-    menu_tambah_anggota()
-  elif pilihan == "2":
-    clear(16 if error else 12)
-    menu_lihat_anggota()
-  elif pilihan == "3":
-    clear(16 if error else 12)
-    menu_edit_anggota()
-  elif pilihan == "4":
-    clear(16 if error else 12)
-    menu_hapus_anggota()
-  elif pilihan == "5":
-    clear(16 if error else 12)
-    menu_utama()
-  elif pilihan == "6":
-    keluar_aplikasi()
-  else:
-    clear(15 if error else 11)
-    print("!"*56)
-    print(f'!! {"Pilihan tidak tersedia":^50} !!')
-    print("!"*56)
-    
-    menu_kelola_buku(error=True)
-    
-# Fungsi menambahkan anggota 
-anggota_baru = anggota.copy()
-def menu_tambah_anggota(error = False):
-  global anggota_baru
+  # cari anggota dan index anggota berdasarkan NIM
+  anggota = None
+  index_anggota = None
+  for i, item in enumerate(list_anggota):
+    if item["NIM"] == nim:
+      anggota = item
+      index_anggota = i
+      break
   
-  print(f'{"="*56}\n= {" Tambah Anggota":^52} =\n{"="*56}\n')
+  pertanyaan = [
+    inquirer.Text('nama',
+                  message="Nama",
+                  default=anggota["nama"],
+                  validate=validasi_inputan_tidak_kosong
+              ),
+    inquirer.List('jurusan',
+                  message="Jurusan",
+                  default=anggota["jurusan"],
+                  choices=['Teknik Informatika', 'Sistem Informasi', 'Teknik Komputer', 'Manajemen Informatika'],
+              ),
+    inquirer.List('jenis_kelamin',
+                  message="Jenis Kelamin",
+                  default=anggota["jenis_kelamin"],
+                  choices=['Laki-laki', 'Perempuan'],
+              ),
+    inquirer.Text('no_telepon',
+                  message="No Telepon",
+                  default=anggota["no_telepon"],
+                  validate=validasi_inputan_harus_angka
+              ),
+    inquirer.Text('alamat',
+                  message="Alamat",
+                  default=anggota["alamat"],
+                  validate=validasi_inputan_tidak_kosong
+              ),
+  ]
   
-  if anggota_baru["NIM"] == None:
-    nim = input("> NIM: ")
-    if nim == "":
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"NIM tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_anggota(error=True)
-    else:
-      clear(9 if error else 5)
-      anggota_baru["NIM"] = nim
-      menu_tambah_anggota(error=False)
-  else:
-    print("NIM:", anggota_baru["NIM"])
-    
-  if anggota_baru["nama"] == None:
-    nama = input("> Nama: ")
-    if nama == "":
-      clear(9 if error else 5)
-      print("!"*56)
-      print(f'!! {"Nama tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_anggota(error=True)
-    else:
-      clear(10 if error else 6)
-      anggota_baru["nama"] = nama
-      menu_tambah_anggota(error=False)
-      
-  else:
-    print("Nama:", anggota_baru["nama"])
-    
-  if anggota_baru["jurusan"] == None:
-    jurusan = input("> Jurusan: ")
-    if jurusan == "":
-      clear(10 if error else 6)
-      print("!"*56)
-      print(f'!! {"Jurusan tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_anggota(error=True)
-    else:
-      clear(11 if error else 7)
-      anggota_baru["jurusan"] = jurusan
-      menu_tambah_anggota(error=False)
-  else:
-    print("Jurusan:", anggota_baru["jurusan"])
-    
-  if anggota_baru["jenis_kelamin"] == None:
-    jenis_kelamin = input("> Jenis Kelamin: ")
-    if jenis_kelamin == "":
-      clear(11 if error else 7)
-      print("!"*56)
-      print(f'!! {"Jenis Kelamin tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_anggota(error=True)
-    else:
-      clear(12 if error else 8)
-      anggota_baru["jenis_kelamin"] = jenis_kelamin
-      menu_tambah_anggota(error=False)
-  else:
-    print("Jenis Kelamin:", anggota_baru["jenis_kelamin"])
-    
-  if anggota_baru["no_telepon"] == None:
-    no_telepon = input("> No Telepon: ")
-    if no_telepon == "":
-      clear(12 if error else 8)
-      print("!"*56)
-      print(f'!! {"No Telepon tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_anggota(error=True)
-    else:
-      clear(13 if error else 9)
-      anggota_baru["no_telepon"] = no_telepon
-      menu_tambah_anggota(error=False)
-  else:
-    print("No Telepon:", anggota_baru["no_telepon"])
-    
-  if anggota_baru["alamat"] == None:
-    alamat = input("> Alamat: ")
-    if alamat == "":
-      clear(13 if error else 9)
-      print("!"*56)
-      print(f'!! {"Alamat tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_tambah_anggota(error=True)
-    else:
-      clear(14 if error else 10)
-      anggota_baru["alamat"] = alamat
-      menu_tambah_anggota(error=False)
-  else:
-    print("Alamat:", anggota_baru["alamat"])
-    
-  simpan = input("\n> Simpan anggota (y/n): ").lower()
+  data_anggota = inquirer.prompt(pertanyaan)
+  simpan_anggota = inquirer.prompt([
+    inquirer.Confirm('simpan',
+                  message="Simpan data anggota?"
+              ),
+  ])
   
-  if simpan == "y":
-    list_anggota.insert(0, anggota_baru)
-    with open(path_anggota, "w") as f:
-      json.dump(list_anggota, f)
-      
-    print("\nAnggota berhasil disimpan!")
-    time.sleep(2.5)
+  if simpan_anggota["simpan"]:
+    list_anggota[index_anggota] = data_anggota
+    list_anggota[index_anggota]["NIM"] = nim
+    ubah_file_json(path_anggota, list_anggota)
     
-    clear(15 if error else 11)
+    print(f'\n{Fore.GREEN}Anggota berhasil disimpan{Style.RESET_ALL}')
+    time.sleep(2)
     
-    tambah_lagi = input("\n> Tambah anggota lagi (y/n): ").lower()
-    anggota_baru = anggota.copy()
-    clear(5)
+    ubah_anggota_lagi = inquirer.prompt([
+      inquirer.Confirm('ubah',
+                    message="Ubah anggota lagi?"
+                ),
+    ])
     
-    if tambah_lagi == "y":
-      menu_tambah_anggota(error=False)
-    else:
-      menu_kelola_anggota(error=False) 
+    if ubah_anggota_lagi["ubah"]:
+      clear_screen()
+      return True
   else:
-    print("\nBatal!\n")
-    anggota_baru = anggota.copy()
-    loading(1, "Menuju menu kelola anggota")
-    clear(21 if error else 17)
-    menu_kelola_anggota(error=False)
+    print(f'\n{Fore.RED}Anggota tidak disimpan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+  clear_screen()
+  return False
 
-# Fungsi menampilkan anggota
-def menu_lihat_anggota(error = False, halaman = 1):
-  print(f'{"="*56}\n= {" List Anggota":^52} =\n{"="*56}\n')
+# Fungsi hapus anggota
+def menu_hapus_anggota():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Hapus Anggota":^52}{Style.RESET_ALL} =\n{"="*56}')
+  
+  nim = inquirer.prompt([
+    inquirer.Text('NIM',
+                  message="NIM",
+                  validate=validasi_ubah_anggota_nim
+              ),
+  ])["NIM"]
+  
+  # cari anggota dan index anggota berdasarkan NIM
+  anggota = None
+  index_anggota = None
+  for i, item in enumerate(list_anggota):
+    if item["NIM"] == nim:
+      anggota = item
+      index_anggota = i
+      break
+    
+  print(f'\n{Fore.YELLOW}Data anggota yang akan dihapus:{Style.RESET_ALL}')
+  print(f'NIM: {anggota["NIM"]}')
+  print(f'Nama: {anggota["nama"]}')
+  print(f'Jurusan: {anggota["jurusan"]}')
+  print(f'Jenis Kelamin: {anggota["jenis_kelamin"]}')
+  print(f'No Telepon: {anggota["no_telepon"]}')
+  print(f'Alamat: {anggota["alamat"]}\n\n')
+  
+  hapus_anggota = inquirer.prompt([
+    inquirer.Confirm('hapus',
+                  message="Hapus data anggota?"
+              ),
+  ])
+  
+  if hapus_anggota["hapus"]:    
+    list_anggota.pop(index_anggota)
+    ubah_file_json(path_anggota, list_anggota)
+    
+    print(f'\n{Fore.GREEN}Anggota berhasil dihapus{Style.RESET_ALL}')
+    time.sleep(2)
+    
+    hapus_anggota_lagi = inquirer.prompt([
+      inquirer.Confirm('hapus',
+                    message="Hapus anggota lagi?"
+                ),
+    ])
+    
+    if hapus_anggota_lagi["hapus"]:
+      clear_screen()
+      return True
+  else:
+    print(f'\n{Fore.RED}Anggota tidak dihapus{Style.RESET_ALL}')
+    time.sleep(2)
+    
+  clear_screen()
+  return False
+
+# Fungsi lihat anggota
+def menu_lihat_anggota(halaman=1):
+  print(f'= {Fore.LIGHTBLUE_EX}{" Lihat Anggota":^52}{Style.RESET_ALL} =\n{"="*56}')
   
   total_anggota = len(list_anggota)
   total_halaman = total_anggota // 5 + 1 if total_anggota % 5 != 0 else total_anggota // 5
   skip = (halaman - 1) * 5
   
-  print(f'{"="*134}\n= {" Halaman " + str(halaman) + " dari " + str(total_halaman):^130} =\n{"="*134}')
-  print(f'| {"No":^4} | {"NIM":<10} | {"Nama":<25} | {"Jurusan":<20} | {"Jenis Kelamin":<10} | {"No Telepon":<15} | {"Alamat":<25} |')
-  print(f'{"="*134}')
+  table = PrettyTable()
+  table.title = f"Halaman {halaman} dari {total_halaman}"
+  table.field_names = ["No", "NIM", "Nama", "Jurusan", "Jenis Kelamin", "No Telepon", "Alamat"]
   
-  for i in range(skip, skip + 5):
-    if i < total_anggota:
-      print(f'| {i+1:<4} | {list_anggota[i]["NIM"]:<10} | {list_anggota[i]["nama"]:<25} | {list_anggota[i]["jurusan"]:<20} | {list_anggota[i]["jenis_kelamin"]:<13} | {list_anggota[i]["no_telepon"]:<15} | {list_anggota[i]["alamat"]:<25} |')
-    else:
-      print(f'| {"":<4} | {"":<10} | {"":<25} | {"":<20} | {"":<13} | {"":<15} | {"":<25} |')
-      
-  print(f'{"="*134}\n\n{"="*56}')
+  for i, item in enumerate(list_anggota[skip:skip+5]):
+    table.add_row([i+1+skip, item["NIM"], item["nama"], item["jurusan"], item["jenis_kelamin"], item["no_telepon"], item["alamat"]])
+    
+  print(table)
   
+  menu = []
   if halaman > 1:
-    print(f'| {"(1) Halaman Sebelumnya":<52} |')
-    
+    menu.append("Halaman Sebelumnya")
+  
   if halaman < total_halaman:
-    print(f'| {"(2) Halaman Selanjutnya":<52} |')
+    menu.append("Halaman Selanjutnya") 
     
-  print(f'| {"(3) Kembali Ke Menu Kelola Anggota":<52} |')
-  print(f'| {"(4) Keluar Aplikasi":<52} |')
+  menu.append("Kembali") 
   
-  print("="*56, end="\n\n")
+  pilihan_menu = inquirer.prompt([
+    inquirer.List('menu',
+                    message="Silahkan pilih menu",
+                    choices=menu,
+                ),
+  ])["menu"]
   
-  pilihan = input("> Pilih menu (1-4): ")
-  
-  if pilihan == "1":
-    clear(27 if error else 23)
+  clear_screen()
+  return pilihan_menu
 
-    if halaman > 1:
-      menu_lihat_anggota(error=False, halaman=halaman-1)
-    else:
-      menu_lihat_anggota(error=False, halaman=halaman)
-  elif pilihan == "2":
-    clear(27 if error else 23)
+# Fungsi kelola peminjaman
+def menu_kelola_peminjaman():
+  while True:
+    print(f'= {Fore.LIGHTBLUE_EX}{" Menu Kelola Peminjaman":^52}{Style.RESET_ALL} =\n{"="*56}')
+  
+    pilihan_menu = inquirer.prompt([
+      inquirer.List('menu',
+                    message="Silahkan pilih menu",
+                    choices=['Pinjam Buku', 'Kembalikan Buku', 'Lihat Riwayat Peminjaman', 'Kembali'],
+                ),
+    ])["menu"]
     
-    if halaman < total_halaman:
-      menu_lihat_anggota(error=False, halaman=halaman+1)
-    else:
-      menu_lihat_anggota(error=False, halaman=halaman)
-  elif pilihan == "3":
-    clear(27 if error else 23)
-    menu_kelola_anggota()
-  elif pilihan == "4":
-    keluar_aplikasi()
-  else:
-    clear(26 if error else 22)
-    print("!"*56)
-    print(f'!! {"Pilihan tidak tersedia":^50} !!')
-    print("!"*56)
+    clear_screen()
     
-    menu_lihat_anggota(error=True, halaman=halaman)
+    if pilihan_menu == "Pinjam Buku":
+      tambah_peminjaman = True
+      while tambah_peminjaman:
+        tambah_peminjaman = menu_tambah_peminjaman()
+    elif pilihan_menu == "Kembalikan Buku":
+      kembalikan_peminjaman = True
+      while kembalikan_peminjaman:
+        kembalikan_peminjaman = menu_kembalikan_peminjaman()
+    elif pilihan_menu == "Lihat Riwayat Peminjaman":
+      lihat_peminjaman = True
+      halaman = 1
+      while lihat_peminjaman:
+        pilihan_menu_lihat_peminjaman = menu_lihat_peminjaman(halaman)
+        if pilihan_menu_lihat_peminjaman == "Halaman Sebelumnya":
+          halaman -= 1
+        elif pilihan_menu_lihat_peminjaman == "Halaman Selanjutnya":
+          halaman += 1
+        elif pilihan_menu_lihat_peminjaman == "Kembali":
+          lihat_peminjaman = False
+    else:
+      break
+    
+# fungsi pinjam buku
+def menu_tambah_peminjaman():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Pinjam Buku":^52}{Style.RESET_ALL} =\n{"="*56}')
+  
+  pertanyaan = [
+    inquirer.Text('NIM',
+                  message="NIM",
+                  validate=validasi_ubah_anggota_nim
+              ),
+    inquirer.Text('ISBN',
+                  message="ISBN",
+                  validate=validasi_buku_tersedia
+              ),
+    inquirer.Text('tanggal_pinjam',
+                  message="Tanggal Pinjam (dd-mm-yyyy)",
+                  validate=validasi_tanggal
+              ),
+  ]
+  
+  data_peminjaman = inquirer.prompt(pertanyaan)
+  simpan_peminjaman = inquirer.prompt([
+    inquirer.Confirm('simpan',
+                  message="Pinjam buku?"
+              ),
+  ])
+  
+  if simpan_peminjaman["simpan"]:
+    # kurangi stok buku
+    for i, item in enumerate(list_buku):
+      if item["ISBN"] == data_peminjaman["ISBN"]:
+        list_buku[i]["stok"] = str(int(list_buku[i]["stok"]) - 1)
+        ubah_file_json(path_buku, list_buku)
+        break
 
-# Fungsi mengedit anggota
-anggota_edit = anggota.copy()
-def menu_edit_anggota(error = False, anggota_terpilih = None):
-  global anggota_edit
-  
-  print(f'{"="*56}\n= {" Edit Anggota":^52} =\n{"="*56}\n')
-  
-  if anggota_terpilih == None:
-    nim = input("> NIM: ")
-    if nim == "":
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"NIM tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_edit_anggota(error=True)
-    else:
-      clear(9 if error else 5)
-      menu_edit_anggota(error=False, anggota_terpilih=nim)
+    data_peminjaman["tanggal_kembali"] = None
+    list_peminjaman.insert(0, data_peminjaman)
+    ubah_file_json(path_peminjaman, list_peminjaman)
     
-  if anggota_terpilih != None:
-    for i in range(len(list_anggota)):
-      if list_anggota[i]["NIM"] == anggota_terpilih:
-        print("NIM:", list_anggota[i]["NIM"], " | Nama:", list_anggota[i]["nama"], " | Jurusan:", list_anggota[i]["jurusan"], " | Jenis Kelamin:", list_anggota[i]["jenis_kelamin"], " | No Telepon:", list_anggota[i]["no_telepon"], " | Alamat:", list_anggota[i]["alamat"], end="\n\n")
-        
-        if anggota_edit["nama"] == None:
-          nama = input("> Nama: ")
-          if nama == "":
-            clear(10 if error else 6)
-            print("!"*56)
-            print(f'!! {"Nama tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_anggota(error=True, anggota_terpilih=anggota_terpilih)
-          else:
-            clear(11 if error else 7)
-            anggota_edit["nama"] = nama
-            menu_edit_anggota(error=False, anggota_terpilih=anggota_terpilih)
-        else:
-          print("Nama:", anggota_edit["nama"])
-        
-        if anggota_edit["jurusan"] == None:
-          jurusan = input("> Jurusan: ")
-          if jurusan == "":
-            clear(11 if error else 7)
-            print("!"*56)
-            print(f'!! {"Jurusan tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_anggota(error=True, anggota_terpilih=anggota_terpilih)
-          else:
-            clear(12 if error else 8)
-            anggota_edit["jurusan"] = jurusan
-            menu_edit_anggota(error=False, anggota_terpilih=anggota_terpilih)
-        else:
-          print("Jurusan:", anggota_edit["jurusan"])
-          
-        if anggota_edit["jenis_kelamin"] == None:
-          jenis_kelamin = input("> Jenis Kelamin: ")
-          if jenis_kelamin == "":
-            clear(12 if error else 8)
-            print("!"*56)
-            print(f'!! {"Jenis Kelamin tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_anggota(error=True, anggota_terpilih=anggota_terpilih)
-          else:
-            clear(13 if error else 9)
-            anggota_edit["jenis_kelamin"] = jenis_kelamin
-            menu_edit_anggota(error=False, anggota_terpilih=anggota_terpilih)
-        else:
-          print("Jenis Kelamin:", anggota_edit["jenis_kelamin"])
-          
-        if anggota_edit["no_telepon"] == None:
-          no_telepon = input("> No Telepon: ")
-          if no_telepon == "":
-            clear(13 if error else 9)
-            print("!"*56)
-            print(f'!! {"No Telepon tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_anggota(error=True, anggota_terpilih=anggota_terpilih)
-          else:
-            clear(14 if error else 10)
-            anggota_edit["no_telepon"] = no_telepon
-            menu_edit_anggota(error=False, anggota_terpilih=anggota_terpilih)
-        else:
-          print("No Telepon:", anggota_edit["no_telepon"])
-          
-        if anggota_edit["alamat"] == None:
-          alamat = input("> Alamat: ")
-          if alamat == "":
-            clear(14 if error else 10)
-            print("!"*56)
-            print(f'!! {"Alamat tidak boleh kosong":^50} !!')
-            print("!"*56)
-            
-            menu_edit_anggota(error=True, anggota_terpilih=anggota_terpilih)
-          else:
-            clear(15 if error else 11)
-            anggota_edit["alamat"] = alamat
-            menu_edit_anggota(error=False, anggota_terpilih=anggota_terpilih)
-        else:
-          print("Alamat:", anggota_edit["alamat"])
-          
-        ubah = input("\n> Ubah anggota (y/n): ").lower()
-        
-        if ubah == "y":
-          list_anggota[i] = anggota_edit
-          list_anggota[i]["NIM"] = anggota_terpilih
-          with open(path_anggota, "w") as f:
-            json.dump(list_anggota, f)
-            
-          print("\nAnggota berhasil diubah!")
-          time.sleep(2.5)
-          
-          clear(16 if error else 12)
-          
-          ubah_lagi = input("\n> Ubah anggota lagi (y/n): ").lower()
-          anggota_edit = anggota.copy()
-          clear(5)
-          
-          if ubah_lagi == "y":
-            menu_edit_anggota(error=False, anggota_terpilih=None)
-          else:
-            menu_kelola_anggota(error=False)
-        else:
-          print("\nBatal!\n")
-          anggota_edit = anggota.copy()
-          loading(1, "Menuju menu kelola anggota")
-          clear(22 if error else 18)
-          menu_kelola_anggota(error=False)
-          
-  print("Anggota tidak ditemukan!")
-  loading(1, "Menuju menu kelola anggota")
-  clear(10 if error else 6)
-  menu_kelola_anggota(error=False)
+    print(f'\n{Fore.GREEN}Buku berhasil dipinjam{Style.RESET_ALL}')
+    time.sleep(2)
+    
+    tambah_peminjaman_lagi = inquirer.prompt([
+      inquirer.Confirm('tambah',
+                    message="Pinjam buku lagi?"
+                ),
+    ])
+    
+    if tambah_peminjaman_lagi["tambah"]:
+      clear_screen()
+      return True
+  else:
+    print(f'\n{Fore.RED}Buku gagal dipinjam{Style.RESET_ALL}')
+    time.sleep(2)
+    
+  clear_screen()
+  return False
 
-# Fungsi menghapus anggota
-def menu_hapus_anggota(error = False):
-  print(f'{"="*56}\n= {" Hapus Anggota":^52} =\n{"="*56}\n')
+# fungsi kembalikan buku
+def menu_kembalikan_peminjaman():
+  print(f'= {Fore.LIGHTBLUE_EX}{" Kembalikan Buku":^52}{Style.RESET_ALL} =\n{"="*56}')
   
-  nim = input("> NIM: ")
-  if nim == "":
-    clear(8 if error else 4)
-    print("!"*56)
-    print(f'!! {"NIM tidak boleh kosong":^50} !!')
-    print("!"*56)
+  pertanyaan = [
+    inquirer.Text('NIM',
+                  message="NIM",
+                  validate=validasi_ubah_anggota_nim
+              ),
+    inquirer.Text('ISBN',
+                  message="ISBN",
+                  validate=validasi_ubah_buku_isbn
+              ),
+    inquirer.Text('tanggal_pinjam',
+                  message="Tanggal Pinjam (dd-mm-yyyy)",
+                  validate=validasi_tanggal_pinjam
+              ),
+    inquirer.Text('tanggal_kembali', 
+                  message="Tanggal Kembali (dd-mm-yyyy)",
+                  validate=validasi_tanggal_kembali
+              ),
+  ]
+  
+  data_peminjaman = inquirer.prompt(pertanyaan)
+  
+  # cari peminjaman dan index peminjaman berdasarkan NIM, ISBN, dan tanggal pinjam
+  index_peminjaman = None
+  for i, item in enumerate(list_peminjaman):
+    if item["NIM"] == data_peminjaman["NIM"] and item["ISBN"] == data_peminjaman["ISBN"] and item["tanggal_pinjam"] == data_peminjaman["tanggal_pinjam"]:
+      index_peminjaman = i
+      break
     
-    menu_hapus_anggota(error=True)
-  else:
-    clear(5 if error else 1)
-    
-    for i in range(len(list_anggota)):
-      if list_anggota[i]["NIM"] == nim:
-        print("NIM:", list_anggota[i]["NIM"], " | Nama:", list_anggota[i]["nama"], " | Jurusan:", list_anggota[i]["jurusan"], " | Jenis Kelamin:", list_anggota[i]["jenis_kelamin"], " | No Telepon:", list_anggota[i]["no_telepon"], " | Alamat:", list_anggota[i]["alamat"], end="\n\n")
-        
-        hapus = input("\n> Hapus anggota (y/n): ").lower()
-        
-        if hapus == "y":
-          list_anggota.pop(i)
-          with open(path_anggota, "w") as f:
-            json.dump(list_anggota, f)
-            
-          print("\nAnggota berhasil dihapus!")
-          time.sleep(2.5)
-          
-          clear(11 if error else 7)
-          
-          hapus_lagi = input("\n> Hapus anggota lagi (y/n): ").lower()
-          clear(5)
-          
-          if hapus_lagi == "y":
-            menu_hapus_anggota(error=False)
-          else:
-            menu_kelola_anggota(error=False)
-        else:
-          print("\nBatal!\n")
-          loading(1, "Menuju menu kelola anggota")
-          clear(16 if error else 12)
-          menu_kelola_anggota(error=False)
+  simpan_peminjaman = inquirer.prompt([
+    inquirer.Confirm('simpan',
+                  message="Kembalikan buku?"
+              ),
+  ])
+  
+  if simpan_peminjaman["simpan"]:
+    # tambah stok buku
+    for i, item in enumerate(list_buku):
+      if item["ISBN"] == data_peminjaman["ISBN"]:
+        list_buku[i]["stok"] = str(int(list_buku[i]["stok"]) + 1) 
+        ubah_file_json(path_buku, list_buku)
+        break
 
-  print("Anggota tidak ditemukan!")
-  loading(1, "Menuju menu kelola anggota")
-  clear(10 if error else 6)
-  menu_kelola_anggota(error=False)
+    list_peminjaman[index_peminjaman] = data_peminjaman
+    ubah_file_json(path_peminjaman, list_peminjaman)
+    
+    print(f'\n{Fore.GREEN}Buku berhasil dikembalikan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+    kembalikan_peminjaman_lagi = inquirer.prompt([
+      inquirer.Confirm('kembalikan',
+                    message="Kembalikan buku lagi?"
+                ),
+    ])
+    
+    if kembalikan_peminjaman_lagi["kembalikan"]:
+      clear_screen()
+      return True
+  else:
+    print(f'\n{Fore.RED}Buku gagal dikembalikan{Style.RESET_ALL}')
+    time.sleep(2)
+    
+  clear_screen()
+  return False
 
-# Fungsi menampilkan menu kelola peminjaman dan pengembalian
-def menu_kelola_peminjaman_dan_pengembalian(error = False):
-  print(f'{"="*56}\n= {" Menu Kelola Peminjaman dan Pengembalian":^52} =\n{"="*56}')
-  print(f'| {"(1) Pinjam Buku":<52} |')
-  print(f'| {"(2) Kembalikan Buku":<52} |')
-  print(f'| {"(3) Lihat Riwayat Peminjaman":<52} |')
-  print(f'| {"(4) Kembali Ke Menu Utama":<52} |')
-  print(f'| {"(5) Keluar Aplikasi":<52} |')
-  print("="*56, end="\n\n")
-  
-  pilihan = input("> Pilih menu (1-6): ")
-  
-  if pilihan == "1":
-    clear(15 if error else 11)
-    menu_pinjam()
-  elif pilihan == "2":
-    clear(15 if error else 11)
-    menu_kembalikan_buku()
-  elif pilihan == "3":
-    clear(15 if error else 11)
-    menu_riwayat_peminjaman()
-  elif pilihan == "4":
-    clear(15 if error else 11)
-    menu_utama()
-  elif pilihan == "5":
-    keluar_aplikasi()
-  else:
-    clear(15 if error else 11)
-    print("!"*56)
-    print(f'!! {"Pilihan tidak tersedia":^50} !!')
-    print("!"*56)
-    
-    menu_kelola_buku(error=True)
-
-# Fungsi pinjam
-peminjaman_baru = peminjaman.copy()
-anggota_terpilih = None
-buku_terpilih = None
-def menu_pinjam(error = False):
-  global peminjaman_baru, anggota_terpilih, buku_terpilih
-  
-  print(f'{"="*56}\n= {" Pinjam Buku":^52} =\n{"="*56}\n')
-  
-  if anggota_terpilih == None:
-    nim = input("> NIM: ")
-    if nim == "":
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"NIM tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_pinjam(error=True)
-    else:
-      for i in range(len(list_anggota)):
-        if list_anggota[i]["NIM"] == nim:
-          anggota_terpilih = list_anggota[i]
-          clear(9 if error else 5)
-          menu_pinjam(error=False)
-      
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"Anggota tidak ditemukan":^50} !!')
-      print("!"*56)
-      
-      menu_pinjam(error=True)
-  else:
-    print("NIM:", anggota_terpilih["NIM"], " | Nama:", anggota_terpilih["nama"], " | Jurusan:", anggota_terpilih["jurusan"], " | Jenis Kelamin:", anggota_terpilih["jenis_kelamin"], " | No Telepon:", anggota_terpilih["no_telepon"], " | Alamat:", anggota_terpilih["alamat"], end="\n")
-      
-  if buku_terpilih == None:
-    isbn = input("> ISBN: ")
-    if isbn == "":
-      clear(9 if error else 5)
-      print("!"*56)
-      print(f'!! {"ISBN tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_pinjam(error=True)
-    else:
-      for i in range(len(list_buku)):
-        if list_buku[i]["ISBN"] == isbn:
-          if list_buku[i]["stok"] == 0:
-            clear(9 if error else 5)
-            print("!"*56)
-            print(f'!! {"Stok buku habis":^50} !!')
-            print("!"*56)
-            
-            menu_pinjam(error=True)
-          else:
-            buku_terpilih = list_buku[i]
-            clear(10 if error else 6)
-            menu_pinjam(error=False)
-      
-      clear(9 if error else 5)
-      print("!"*56)
-      print(f'!! {"Buku tidak ditemukan":^50} !!')
-      print("!"*56)
-      
-      menu_pinjam(error=True)
-  else:
-    print("ISBN:", buku_terpilih["ISBN"], " | Judul:", buku_terpilih["judul"], " | Pengarang:", buku_terpilih["pengarang"], " | Penerbit:", buku_terpilih["penerbit"], " | Tahun Terbit:", buku_terpilih["tahun_terbit"], " | Jumlah Halaman:", buku_terpilih["jumlah_halaman"], " | Stok:", buku_terpilih["stok"], end="\n")
-          
-  pinjam = input("\n> Pinjam buku (y/n): ").lower()
-  if pinjam == 'y':
-    peminjaman_baru["NIM"] = anggota_terpilih["NIM"]
-    peminjaman_baru["ISBN"] = buku_terpilih["ISBN"]
-    peminjaman_baru["tanggal_pinjam"] = datetime.datetime.now().strftime("%d/%m/%Y")
-    
-    for i in range(len(list_peminjaman)):
-      if list_peminjaman[i]["NIM"] == peminjaman_baru["NIM"] and list_peminjaman[i]["ISBN"] == peminjaman_baru["ISBN"] and list_peminjaman[i]["tanggal_pinjam"] == peminjaman_baru["tanggal_pinjam"]:
-        clear(11 if error else 7)
-        print("!"*56)
-        print(f'!! {"Anggota sudah meminjam buku ini":^50} !!')
-        print("!"*56)
-        
-        menu_pinjam(error=True)
-    
-    peminjaman_baru["status"] = "Dipinjam"
-    
-    list_peminjaman.insert(0, peminjaman_baru)
-    with open(path_peminjaman, "w") as f:
-      json.dump(list_peminjaman, f)
-      
-    for i in range(len(list_buku)):
-      if list_buku[i]["ISBN"] == buku_terpilih["ISBN"]:
-        list_buku[i]["stok"] -= 1
-        with open(path_buku, "w") as f:
-          json.dump(list_buku, f)
-      
-    print("\nBuku berhasil dipinjam!")
-    time.sleep(2.5)
-    
-    clear(11 if error else 7)
-    
-    pinjam_lagi = input("\n> Pinjam buku lagi (y/n): ").lower()
-    peminjaman_baru = peminjaman.copy()
-    anggota_terpilih = None
-    buku_terpilih = None
-    clear(5)
-    
-    if pinjam_lagi == "y":
-      menu_pinjam(error=False)
-    else:
-      menu_kelola_peminjaman_dan_pengembalian(error=False)
-  else:
-    print("\nBatal!\n")
-    peminjaman_baru = peminjaman.copy()
-    anggota_terpilih = None
-    buku_terpilih = None
-    loading(1, "Menuju menu kelola peminjaman dan pengembalian")
-    clear(16 if error else 12)
-    menu_kelola_peminjaman_dan_pengembalian(error=False)
-
-peminjaman_edit = peminjaman.copy()
-anggota_terpilih = None
-buku_terpilih = None
-# Fungsi mengembalikan buku
-def menu_kembalikan_buku(error = False):
-  global peminjaman_edit, anggota_terpilih, buku_terpilih
-  
-  print(f'{"="*56}\n= {" Kembalikan Buku":^52} =\n{"="*56}\n')
-  
-  if anggota_terpilih == None:
-    nim = input("> NIM: ")
-    if nim == "":
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"NIM tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_kembalikan_buku(error=True)
-    else:
-      for i in range(len(list_anggota)):
-        if list_anggota[i]["NIM"] == nim:
-          anggota_terpilih = list_anggota[i]
-          clear(9 if error else 5)
-          menu_kembalikan_buku(error=False)
-      
-      clear(8 if error else 4)
-      print("!"*56)
-      print(f'!! {"Anggota tidak ditemukan":^50} !!')
-      print("!"*56)
-      
-      menu_kembalikan_buku(error=True)
-  else:
-    print("NIM:", anggota_terpilih["NIM"], " | Nama:", anggota_terpilih["nama"], " | Jurusan:", anggota_terpilih["jurusan"], " | Jenis Kelamin:", anggota_terpilih["jenis_kelamin"], " | No Telepon:", anggota_terpilih["no_telepon"], " | Alamat:", anggota_terpilih["alamat"], end="\n")
-      
-  if buku_terpilih == None:
-    isbn = input("> ISBN: ")
-    if isbn == "":
-      clear(9 if error else 5)
-      print("!"*56)
-      print(f'!! {"ISBN tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_kembalikan_buku(error=True)
-    else:
-      for i in range(len(list_buku)):
-        if list_buku[i]["ISBN"] == isbn:
-          buku_terpilih = list_buku[i]
-          clear(10 if error else 6)
-          menu_kembalikan_buku(error=False)
-      
-      clear(9 if error else 5)
-      print("!"*56)
-      print(f'!! {"Buku tidak ditemukan":^50} !!')
-      print("!"*56)
-      
-      menu_kembalikan_buku(error=True)
-  else:
-    print("ISBN:", buku_terpilih["ISBN"], " | Judul:", buku_terpilih["judul"], " | Pengarang:", buku_terpilih["pengarang"], " | Penerbit:", buku_terpilih["penerbit"], " | Tahun Terbit:", buku_terpilih["tahun_terbit"], " | Jumlah Halaman:", buku_terpilih["jumlah_halaman"], " | Stok:", buku_terpilih["stok"], end="\n")
-
-  if peminjaman_edit["tanggal_pinjam"] == None:
-    tanggal_pinjam = input("> Tanggal Pinjam (dd/mm/yyyy): ")
-  
-    if tanggal_pinjam == "":
-      clear(10 if error else 6)
-      print("!"*56)
-      print(f'!! {"Tanggal Pinjam tidak boleh kosong":^50} !!')
-      print("!"*56)
-      
-      menu_kembalikan_buku(error=True)
-    else:
-      for i in range(len(list_peminjaman)):
-        if list_peminjaman[i]["NIM"] == anggota_terpilih["NIM"] and list_peminjaman[i]["ISBN"] == buku_terpilih["ISBN"] and list_peminjaman[i]["tanggal_pinjam"] == tanggal_pinjam:
-          if list_peminjaman[i]["status"] == "Dikembalikan":
-            clear(11 if error else 7)
-            print("!"*56)
-            print(f'!! {"Buku sudah dikembalikan":^50} !!')
-            print("!"*56)
-            
-            menu_kembalikan_buku(error=True)
-          else:
-            peminjaman_edit = list_peminjaman[i]
-            clear(11 if error else 7)
-            menu_kembalikan_buku(error=False)
-      
-      clear(10 if error else 6)
-      print("!"*56)
-      print(f'!! {"Peminjaman tidak ditemukan":^50} !!')
-      print("!"*56)
-      
-      menu_kembalikan_buku(error=True)
-  else:
-    print("Tanggal Pinjam:", peminjaman_edit["tanggal_pinjam"])
-      
-  kembalikan = input("\n> Kembalikan buku (y/n): ").lower()
-  
-  if kembalikan == "y":
-    peminjaman_edit["status"] = "Dikembalikan"
-    peminjaman_edit["tanggal_kembali"] = datetime.datetime.now().strftime("%d/%m/%Y")
-    
-    for i in range(len(list_peminjaman)):
-      if list_peminjaman[i]["NIM"] == peminjaman_edit["NIM"] and list_peminjaman[i]["ISBN"] == peminjaman_edit["ISBN"] and list_peminjaman[i]["tanggal_pinjam"] == peminjaman_edit["tanggal_pinjam"]:
-        list_peminjaman[i] = peminjaman_edit
-        with open(path_peminjaman, "w") as f:
-          json.dump(list_peminjaman, f)
-      
-    for i in range(len(list_buku)):
-      if list_buku[i]["ISBN"] == buku_terpilih["ISBN"]:
-        list_buku[i]["stok"] += 1
-        with open(path_buku, "w") as f:
-          json.dump(list_buku, f)
-      
-    print("\nBuku berhasil dikembalikan!")
-    time.sleep(2.5)
-    
-    clear(11 if error else 7)
-    
-    kembalikan_lagi = input("\n> Kembalikan buku lagi (y/n): ").lower()
-    peminjaman_edit = peminjaman.copy()
-    anggota_terpilih = None
-    buku_terpilih = None
-    clear(6)
-    
-    if kembalikan_lagi == "y":
-      menu_kembalikan_buku(error=False)
-    else:
-      menu_kelola_peminjaman_dan_pengembalian(error=False)    
-  else:
-    print("\nBatal!\n")
-    peminjaman_edit = peminjaman.copy()
-    anggota_terpilih = None
-    buku_terpilih = None
-    loading(1, "Menuju menu kelola peminjaman dan pengembalian")
-    clear(17 if error else 13)
-    menu_kelola_peminjaman_dan_pengembalian(error=False)
-    
-# Fungsi riwayat peminjaman
-def menu_riwayat_peminjaman(error = False, halaman = 1):
-  print(f'{"="*56}\n= {" Riwayat Peminjaman":^52} =\n{"="*56}\n')
+# Fungsi lihat peminjaman
+def menu_lihat_peminjaman(halaman=1):
+  print(f'= {Fore.LIGHTBLUE_EX}{" Lihat Riwayat Peminjaman":^52}{Style.RESET_ALL} =\n{"="*56}')
   
   total_peminjaman = len(list_peminjaman)
   total_halaman = total_peminjaman // 5 + 1 if total_peminjaman % 5 != 0 else total_peminjaman // 5
   skip = (halaman - 1) * 5
   
-  print(f'{"="*88}\n= {" Halaman " + str(halaman) + " dari " + str(total_halaman):^84} =\n{"="*88}')
-  print(f'| {"No":^4} | {"NIM":<10} | {"ISBN":<10} | {"Tanggal Pinjam":<15} | {"Tanggal Kembali":<15} | {"Status":<15} |')
-  print(f'{"="*88}')
+  table = PrettyTable()
+  table.title = f"Halaman {halaman} dari {total_halaman}"
+  table.field_names = ["No", "NIM", "ISBN", "Tanggal Pinjam", "Tanggal Kembali"]
   
-  for i in range(skip, skip + 5):
-    if i < total_peminjaman:
-      tanggal_kembali = list_peminjaman[i]["tanggal_kembali"] if list_peminjaman[i]["tanggal_kembali"] != None else "-"
-      print(f'| {i+1:^4} | {list_peminjaman[i]["NIM"]:<10} | {list_peminjaman[i]["ISBN"]:<10} | {list_peminjaman[i]["tanggal_pinjam"]:<15} | {tanggal_kembali:<15} | {list_peminjaman[i]["status"]:<15} |')
-    else:
-      print(f'| {"":^4} | {"":<10} | {"":<10} | {"":<15} | {"":<15} | {"":<15} |')
-      
-  print(f'{"="*88}\n\n{"="*59}')
+  for i, item in enumerate(list_peminjaman[skip:skip+5]):
+    table.add_row([i+1+skip, item["NIM"], item["ISBN"], item["tanggal_pinjam"], item["tanggal_kembali"]])
+    
+  print(table)
   
+  menu = []
   if halaman > 1:
-    print(f'| {"(1) Halaman Sebelumnya":<55} |')
-  
+    menu.append("Halaman Sebelumnya")
+    
   if halaman < total_halaman:
-    print(f'| {"(2) Halaman Selanjutnya":<55} |')
+    menu.append("Halaman Selanjutnya")
     
-  print(f'| {"(3) Kembali Ke Menu Kelola Peminjaman dan Pengembalian":<55} |')
-  print(f'| {"(4) Keluar Aplikasi":<55} |')
+  menu.append("Kembali")
   
-  print("="*59, end="\n\n")
+  pilihan_menu = inquirer.prompt([
+    inquirer.List('menu',
+                    message="Silahkan pilih menu",
+                    choices=menu,
+                ),
+  ])["menu"]
   
-  pilihan = input("> Pilih menu (1-4): ")
-  
-  if pilihan == "1":
-    clear(27 if error else 23)
-    
-    if halaman > 1:
-      menu_riwayat_peminjaman(error=False, halaman=halaman-1)
-    else:
-      menu_riwayat_peminjaman(error=False, halaman=halaman)
-  elif pilihan == "2":
-    clear(27 if error else 23)
-    
-    if halaman < total_halaman:
-      menu_riwayat_peminjaman(error=False, halaman=halaman+1)
-    else:
-      menu_riwayat_peminjaman(error=False, halaman=halaman)
-  elif pilihan == "3":
-    clear(27 if error else 23)
-    menu_kelola_peminjaman_dan_pengembalian()
-  elif pilihan == "4":
-    keluar_aplikasi()
-  else:
-    clear(26 if error else 22)
-    print("!"*56)
-    print(f'!! {"Pilihan tidak tersedia":^50} !!')
-    print("!"*56)
-    
-    menu_riwayat_peminjaman(error=True, halaman=halaman)
-  
+  clear_screen()
+  return pilihan_menu  
 
-# Menjalankan program
+# Menjalankan fungsi utama
 main()
